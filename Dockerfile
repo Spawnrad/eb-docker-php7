@@ -1,34 +1,51 @@
-FROM php:7.0.8-fpm
+FROM php:7.1-fpm
 
 COPY config/custom.ini /usr/local/etc/php/conf.d/
 
-RUN apt-get update && apt-get install -y zlib1g-dev libicu-dev libpq-dev wget git libmemcached-dev \
-    && docker-php-ext-install opcache \
-    && docker-php-ext-install intl \
-    && docker-php-ext-install mbstring \
-    && docker-php-ext-install pdo_mysql \
-	&& docker-php-ext-install zip
-	
-# install memcached extension
-RUN git clone --branch php7 https://github.com/php-memcached-dev/php-memcached /usr/src/php/ext/memcached \
-  && cd /usr/src/php/ext/memcached \
-  && docker-php-ext-configure memcached \
-  && docker-php-ext-install memcached
+RUN apt-get update && apt-get install -y openssl git libxml2-dev zlib1g-dev libicu-dev g++ unzip
 
-RUN mkdir -p /opt/newrelic
-WORKDIR /opt/newrelic
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN composer --version
 
-RUN wget http://download.newrelic.com/php_agent/release/newrelic-php5-6.4.0.163-linux.tar.gz -O newrelic-php5-linux.tar.gz
-RUN tar -zxf newrelic-php5-linux.tar.gz
+# Set timezone
+RUN rm /etc/localtime
+RUN ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime && echo Europe/Paris > /etc/timezone
+RUN printf '[PHP]\ndate.timezone = "%s"\n', Europe/Paris > /usr/local/etc/php/conf.d/tzone.ini
+RUN "date"
 
-ENV NR_INSTALL_SILENT true
-ENV NR_INSTALL_PHPLIST /usr/local/bin
+# Install APCu v5.1.7
+RUN mkdir -p /usr/src/php/ext
+RUN curl -L -o /tmp/apcu-5.1.7.tgz https://pecl.php.net/get/apcu-5.1.7.tgz
+RUN tar xfz /tmp/apcu-5.1.7.tgz
+RUN rm -r /tmp/apcu-5.1.7.tgz
+RUN mv apcu-5.1.7  /usr/src/php/ext/apcu
 
-WORKDIR /opt/newrelic/newrelic-php5-6.4.0.163-linux
-RUN bash newrelic-install install
-RUN mkdir -p /var/log/newrelic
-RUN mkdir -p /var/run/newrelic
+# Install the available extensions
+# Sockets is for AMQP RabitMQ ?
+# SOAP validation VAT Number
+RUN docker-php-ext-install sockets pdo pdo_mysql intl apcu soap
+
+# Enable apc
+RUN echo "apc.enable_cli = On" >> /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini
+
+# install and active xdebug
+RUN pecl install xdebug
+RUN docker-php-ext-enable xdebug
+RUN echo "error_reporting = E_ALL" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "display_startup_errors = On" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "display_errors = On" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "xdebug.remote_enable=1" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "xdebug.remote_connect_back=1" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "xdebug.remote_port=9001" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN echo "xdebug.max_nesting_level=9999" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+#AMQP
+RUN pecl install amqp && docker-php-ext-enable amqp
+
+# Configure short open tag for Symfony
+RUN echo "short_open_tag = Off" >> /usr/local/etc/php/php.ini
+
+RUN usermod -u 1000 www-data 
 
 WORKDIR /var/www/html
-  
-RUN usermod -u 1000 www-data

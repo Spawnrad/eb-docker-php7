@@ -40,9 +40,6 @@ RUN echo "xdebug.remote_connect_back=1" >> /usr/local/etc/php/conf.d/docker-php-
 RUN echo "xdebug.remote_port=9001" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 RUN echo "xdebug.max_nesting_level=9999" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
-#AMQP
-RUN pecl install amqp && docker-php-ext-enable amqp
-
 # Configure short open tag for Symfony
 RUN echo "short_open_tag = Off" >> /usr/local/etc/php/php.ini
 

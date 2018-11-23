@@ -46,7 +46,7 @@ RUN echo "short_open_tag = Off" >> /usr/local/etc/php/php.ini
 RUN usermod -u 1000 www-data 
 
 # Supervisor
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 CMD supervisord -c /etc/supervisor/conf.d/supervisord.conf
 
 WORKDIR /var/www/html

@@ -2,7 +2,7 @@ FROM php:7.2-fpm
 
 COPY config/custom.ini /usr/local/etc/php/conf.d/
 
-RUN apt-get update && apt-get install -y openssl git libxml2-dev zlib1g-dev libicu-dev g++ unzip
+RUN apt-get update && apt-get install -y openssl git libxml2-dev zlib1g-dev libicu-dev g++ unzip supervisor
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -44,5 +44,10 @@ RUN echo "xdebug.max_nesting_level=9999" >> /usr/local/etc/php/conf.d/docker-php
 RUN echo "short_open_tag = Off" >> /usr/local/etc/php/php.ini
 
 RUN usermod -u 1000 www-data 
+
+# Supervisor
+RUN mkdir -p /var/log/supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+CMD supervisord -c /etc/supervisor/conf.d/supervisord.conf
 
 WORKDIR /var/www/html
